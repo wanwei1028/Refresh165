@@ -2,7 +2,7 @@
 
 ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed）。
 
-- 版本：v1.0.1
+- 版本：v1.0.2
 - 开发者：对味
 - 适配：ColorOS 17（OPPO / 一加，含 PLK110 一加 15）
 - 限制：无机型限制、无系统版本限制
@@ -20,7 +20,7 @@ ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed）。
 
 ## 安装
 
-1. 安装 `Refresh165-v1.0.1.apk`
+1. 安装 `Refresh165-v1.0.2.apk`
 2. LSPosed / Vector 中启用本模块
 3. 作用域勾选：`android`、`system`、`com.android.settings`（三个都要）
 4. 重启
@@ -39,5 +39,5 @@ ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed）。
 ## 校验
 
 ```
-SHA256: 54189e11ec1e33d4cb788aa3cf1ffd47a45077085b1c64586b8cebb0bdd974a1
+SHA256: 6beb827fb8c1700aba5f0aa817ee5c88e3c3887017add76bcc7489ad8db44ae9
 ```

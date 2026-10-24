@@ -39,5 +39,5 @@ ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed）。
 ## 校验
 
 ```
-SHA256: ca1ab3188d18ff5bba4f9c7cb4556eb3d829c2ee0e6cb0e160a1794183d9c7ca
+SHA256: 8bac27c63db3a1e66300f7834265574ede1b563c5757be5cdebb421a6dacbc01
 ```

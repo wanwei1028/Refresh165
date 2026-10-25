@@ -1,5 +1,9 @@
 # 更新记录
 
+## v1.0.5
+- 设置页开关不再需要锁屏：切换后立即重算 min_fps（重下发 ADFR 配置 + 主动触发一次重算）
+- 开关说明改为「切换立即生效」
+
 ## v1.0.4
 - 版本号改为单一来源 `version.properties`，构建时自动注入 AndroidManifest
 - 新增 `scripts/bump.sh` 版本自增脚本

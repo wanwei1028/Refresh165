@@ -7,6 +7,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -18,26 +21,61 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: 安装 Android SDK 组件
+      - name: 读取版本号
+        id: ver
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+          v=$(grep '^versionName=' version.properties | cut -d= -f2)
+          c=$(grep '^versionCode=' version.properties | cut -d= -f2)
+          echo "name=$v" >> "$GITHUB_OUTPUT"
+          echo "code=$c" >> "$GITHUB_OUTPUT"
 
       - name: 校验版本号与 tag 一致
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          v=$(grep '^versionName=' version.properties | cut -d= -f2)
+          v="${{ steps.ver.outputs.name }}"
           if [ "v$v" != "${GITHUB_REF_NAME}" ]; then
             echo "版本不一致: version.properties=$v, tag=${GITHUB_REF_NAME}" >&2
             exit 1
           fi
           echo "版本一致: v$v"
 
+      - name: 安装 Android SDK 组件
+        run: |
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMANAGER" ] || SDKMANAGER="$(command -v sdkmanager)"
+          yes | "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: 准备签名密钥
+        env:
+          KS_BASE64: ${{ secrets.KS_BASE64 }}
+        run: |
+          if [ -n "${KS_BASE64:-}" ]; then
+            echo "$KS_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+            echo "KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "使用仓库 Secrets 中的发布密钥"
+          else
+            echo "未配置 KS_BASE64，将生成临时密钥（产物仅用于验证，不能覆盖正式版）"
+          fi
+
       - name: 构建 APK
+        env:
+          KS_PASS: ${{ secrets.KS_PASS }}
+          KS_ALIAS: ${{ secrets.KS_ALIAS }}
         run: |
           chmod +x build.sh
-          ANDROID_SDK="$ANDROID_HOME" BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0" ./build.sh
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0" \
+          KS_PASS="${KS_PASS:-modpass}" \
+          KS_ALIAS="${KS_ALIAS:-modkey}" \
+          ./build.sh
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Refresh165-apk
+          name: Refresh165-v${{ steps.ver.outputs.name }}
           path: out/Refresh165-v*.apk
+
+      - name: 发布 Release
+        if: startsWith(github.ref, 'refs/tags/v') && env.KEYSTORE != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/Refresh165-v*.apk
+          generate_release_notes: true

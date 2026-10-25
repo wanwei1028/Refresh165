@@ -435,6 +435,57 @@ public final class Hook implements IXposedHookLoadPackage {
      * 开关变化时让 ADFR 重新下发一次配置：updateAdfrXmlConfig 只在特定事件被调用，
      * 光改 Settings 不会重发，所以这里保存实例+参数，开关一变就主动再调一次。
      */
+    private static volatile Object policyInstance;
+
+    /**
+     * 让 vendor 立刻重算一次刷新率/min_fps，避免"开关后必须锁屏一次"。
+     * 优先调用 OplusRefreshRatePolicyImpl.updateCurrentSettingMode(mode, true)；
+     * 若不可用，退化到 peak_refresh_rate 抖动（会短暂经过 120，但无锁屏）。
+     */
+    private static void nudgeRefreshRate() {
+        final Object policy = policyInstance;
+        final int mode = selectedSettingMode;
+        try {
+            if (policy != null) {
+                java.lang.reflect.Method m = policy.getClass().getDeclaredMethod(
+                        "updateCurrentSettingMode", int.class, boolean.class);
+                m.setAccessible(true);
+                m.invoke(policy, Integer.valueOf(mode), Boolean.TRUE);
+                android.util.Log.i("Refresh165", "nudge via updateCurrentSettingMode mode=" + mode);
+                // 实测该调用不足以让 ADFR 重算 min_fps，继续走 peak 抖动兜底
+                
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("Refresh165", "nudge direct failed: " + t);
+        }
+        // 退化：peak 抖动
+        try {
+            Object thread = XposedHelpers.callStaticMethod(
+                    XposedHelpers.findClass("android.app.ActivityThread", null),
+                    "currentActivityThread");
+            final Object ctx = thread == null ? null
+                    : XposedHelpers.callMethod(thread, "getSystemContext");
+            if (!(ctx instanceof android.content.Context)) return;
+            final android.content.ContentResolver cr =
+                    ((android.content.Context) ctx).getContentResolver();
+            final int orig = android.provider.Settings.System.getInt(
+                    cr, "peak_refresh_rate", 165);
+            // 选一个与当前不同的临时峰值，保证确实触发一次重算
+            final int tmpPeak = orig >= 165 ? 120 : 165;
+            android.provider.Settings.System.putInt(cr, "peak_refresh_rate", tmpPeak);
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                    new Runnable() {
+                        @Override public void run() {
+                            try {
+                                android.provider.Settings.System.putInt(
+                                        cr, "peak_refresh_rate", orig);
+                                android.util.Log.i("Refresh165", "nudge via peak toggle " + orig);
+                            } catch (Throwable ignored) { }
+                        }
+                    }, 200L);
+        } catch (Throwable ignored) { }
+    }
+
     private static void resendAdfrConfig() {
         Object inst = nativeRusInstance;
         String arg = nativeLastXmlArg;
@@ -477,6 +528,7 @@ public final class Hook implements IXposedHookLoadPackage {
                                                     "observer fired, force=" + isForce165());
                                             pendingApply = true;
                                             resendAdfrConfig();
+                                            nudgeRefreshRate();
                                         }
                                     };
                             ((android.content.Context) ctx).getContentResolver()
@@ -649,22 +701,28 @@ public final class Hook implements IXposedHookLoadPackage {
                         if (!(ctxObj instanceof android.content.Context)) return;
                         final android.content.Context ctx = (android.content.Context) ctxObj;
 
-                        Class<?> swCls;
-                        try {
-                            swCls = XposedHelpers.findClass(
-                                    "androidx.preference.SwitchPreferenceCompat", cl);
-                        } catch (Throwable t) {
-                            swCls = XposedHelpers.findClass(
-                                    "androidx.preference.SwitchPreference", cl);
+                        // COUI 控件才会套用 ColorOS 的卡片样式；androidx 的那个会错位
+                        Class<?> swCls = null;
+                        String[] candidates = {
+                                "com.coui.appcompat.preference.COUISwitchPreference",
+                                "com.coui.appcompat.preference.COUISwitchPreferenceCompat",
+                                "androidx.preference.SwitchPreferenceCompat",
+                                "androidx.preference.SwitchPreference"
+                        };
+                        for (String cn : candidates) {
+                            try {
+                                swCls = XposedHelpers.findClass(cn, cl);
+                                android.util.Log.i("Refresh165", "switch class = " + cn);
+                                break;
+                            } catch (Throwable ignored) { }
                         }
+                        if (swCls == null) throw new ClassNotFoundException("no switch preference");
                         final Object sw = swCls.getConstructor(android.content.Context.class)
                                 .newInstance(ctx);
                         XposedHelpers.callMethod(sw, "setKey", "refresh165_lock");
                         XposedHelpers.callMethod(sw, "setTitle", "锁定 165Hz（关闭 LTPO）");
                         XposedHelpers.callMethod(sw, "setSummary",
-                                "开启后始终保持165Hz，每次开关都要锁屏一次生效");
-                        XposedHelpers.callMethod(sw, "setIcon",
-                                android.R.drawable.ic_menu_recent_history);
+                                "开启后始终保持165Hz，切换立即生效");
                         XposedHelpers.callMethod(sw, "setChecked",
                                 android.provider.Settings.Global.getInt(
                                         ctx.getContentResolver(), "refresh165_force", 0) == 1);
@@ -689,7 +747,19 @@ public final class Hook implements IXposedHookLoadPackage {
                                     }
                                 });
                         XposedHelpers.callMethod(sw, "setOnPreferenceChangeListener", listener);
-                        XposedHelpers.callMethod(screen, "addPreference", sw);
+                        Object group = null;
+                        try {
+                            group = XposedHelpers.callMethod(screen, "findPreference",
+                                    "refresh_rate_category");
+                        } catch (Throwable ignored) { }
+                        try {
+                            XposedHelpers.callMethod(sw, "setOrder", Integer.valueOf(40));
+                        } catch (Throwable ignored) { }
+                        if (group != null) {
+                            XposedHelpers.callMethod(group, "addPreference", sw);
+                        } else {
+                            XposedHelpers.callMethod(screen, "addPreference", sw);
+                        }
                         android.util.Log.i("Refresh165", "settings switch row added");
                     } catch (Throwable t) {
                         android.util.Log.e("Refresh165", "settings switch failed: " + t);
@@ -1085,6 +1155,7 @@ public final class Hook implements IXposedHookLoadPackage {
                             }
                             int requested = ((Number) p.args[0]).intValue();
                             selectedSettingMode = requested;
+                            policyInstance = p.thisObject;
                             if (requested != RATE_ID_165) {
                                 return;
                             }

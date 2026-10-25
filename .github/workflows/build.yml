@@ -4,7 +4,6 @@ on:
   push:
     branches: [ main ]
     tags: [ 'v*' ]
-  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -46,6 +45,7 @@ jobs:
           yes | "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
       - name: 准备签名密钥
+        if: github.event_name == 'push'
         env:
           KS_BASE64: ${{ secrets.KS_BASE64 }}
         run: |

@@ -73,9 +73,36 @@ jobs:
           name: Refresh165-v${{ steps.ver.outputs.name }}
           path: out/Refresh165-v*.apk
 
+      - name: 生成更新日志
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v="v${{ steps.ver.outputs.name }}"
+          notes="$RUNNER_TEMP/notes.md"
+          awk -v ver="## $v" '
+            $0 == ver { flag=1; next }
+            flag && /^## / { exit }
+            flag { print }
+          ' CHANGELOG.md > "$notes"
+          if [ ! -s "$notes" ]; then
+            echo "CHANGELOG.md 中没有 $v 段落，使用默认说明" >&2
+            echo "$v" > "$notes"
+          fi
+          # 去掉开头空行
+          sed -i '/./,$!d' "$notes"
+          {
+            echo ""
+            echo "---"
+            echo ""
+            echo "版本：$v（versionCode ${{ steps.ver.outputs.code }}）"
+            echo "作用域：android / system / com.android.settings"
+            echo "构建：GitHub Actions 自动构建，使用与历史版本相同的签名密钥"
+          } >> "$notes"
+          echo "---- notes ----"; cat "$notes"
+
       - name: 发布 Release
         if: startsWith(github.ref, 'refs/tags/v') && env.KEYSTORE != ''
         uses: softprops/action-gh-release@v2
         with:
           files: out/Refresh165-v*.apk
-          generate_release_notes: true
+          body_path: ${{ runner.temp }}/notes.md
+          generate_release_notes: false

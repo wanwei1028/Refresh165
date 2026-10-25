@@ -2,7 +2,7 @@
 
 ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed，基于 libxposed 新 API）。
 
-- 版本：v1.0.3
+- 版本：见 `version.properties`（当前 v1.0.4）
 - 开发者：对味
 - 适配：ColorOS 17（OPPO / 一加，含 PLK110 一加 15）
 - 限制：无机型限制、无系统版本限制、无隐藏开关
@@ -39,6 +39,25 @@ ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed，基于 libxp
 - 视频类应用默认跟随系统策略（多数不上报片源帧率，因此系统无法「按片源」决定刷新率）
 - AOD 不改动
 - 模块不写 `persist.*` 属性，也不修改 `/my_product` 分区文件
+
+## 版本号管理
+
+版本号只有一个来源：`version.properties`
+
+```
+versionName=1.0.4
+versionCode=104
+```
+
+构建时由 `build.sh` 注入到 `AndroidManifest.xml`，仓库里的 manifest 仅作模板，不需要手改。
+
+```bash
+./scripts/bump.sh patch    # 1.0.4 -> 1.0.5
+./scripts/bump.sh minor    # 1.0.4 -> 1.1.0
+./scripts/bump.sh major    # 1.0.4 -> 2.0.0
+```
+
+CI 在打 tag 时会校验 `version.properties` 与 tag 一致，不一致直接失败。
 
 ## 从源码构建
 

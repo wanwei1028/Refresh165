@@ -5,6 +5,11 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 MOD="$ROOT/module"
+VERSION_FILE="$ROOT/version.properties"
+
+VER_NAME="$(grep '^versionName=' "$VERSION_FILE" | cut -d= -f2)"
+VER_CODE="$(grep '^versionCode=' "$VERSION_FILE" | cut -d= -f2)"
+echo "Refresh165 v$VER_NAME ($VER_CODE)"
 
 SDK="${ANDROID_SDK:-${ANDROID_HOME:-$HOME/Library/Android/sdk}}"
 BT="${BUILD_TOOLS:-$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)}"
@@ -21,7 +26,7 @@ KEYSTORE="${KEYSTORE:-$ROOT/keystore.jks}"
 KS_PASS="${KS_PASS:-modpass}"
 KS_ALIAS="${KS_ALIAS:-modkey}"
 OUT="${OUT:-$ROOT/out}"
-APK_NAME="${APK_NAME:-Refresh165.apk}"
+APK_NAME="${APK_NAME:-Refresh165-v$VER_NAME.apk}"
 
 for f in "$D8" "$AAPT2" "$ZIPALIGN" "$APKSIGNER" "$PLATFORM" "$LIBXPOSED"; do
   [ -e "$f" ] || { echo "缺少依赖: $f" >&2; exit 1; }
@@ -42,8 +47,10 @@ find "$OUT/classes/com" -name '*.class' > "$OUT/classes.txt"
 
 echo "[4/6] 资源编译与链接"
 "$AAPT2" compile --dir "$MOD/res" -o "$OUT/res.zip"
+sed -E "s/android:versionCode=\"[0-9]+\"/android:versionCode=\"$VER_CODE\"/; s/android:versionName=\"[^\"]*\"/android:versionName=\"v$VER_NAME\"/" \
+  "$MOD/AndroidManifest.xml" > "$OUT/AndroidManifest.xml"
 "$AAPT2" link -o "$OUT/apk/base.apk" -I "$PLATFORM" \
-  --manifest "$MOD/AndroidManifest.xml" "$OUT/res.zip"
+  --manifest "$OUT/AndroidManifest.xml" "$OUT/res.zip"
 
 echo "[5/6] 打包（含 assets 与根目录 META-INF/xposed）"
 python3 - "$MOD" "$OUT" <<'PY'

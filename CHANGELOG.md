@@ -1,5 +1,10 @@
 # 更新记录
 
+## v1.0.4
+- 版本号改为单一来源 `version.properties`，构建时自动注入 AndroidManifest
+- 新增 `scripts/bump.sh` 版本自增脚本
+- CI 增加「tag 与版本号一致性」校验
+
 ## v1.0.3
 - 修正设置页「刷新率设定」文案：没有 `persist.performance.rapid.refresh_rate.level` 的机型不再显示 `120 Hz`，改为显示设置页自带的「极速高刷 165 Hz」
 - 该修正只 hook 渲染入口 `refreshRateSettingSummary(int,int)`，不影响实际刷新率与 LTPO

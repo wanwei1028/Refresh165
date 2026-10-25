@@ -1,0 +1,32 @@
+name: build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK 组件
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" > /dev/null
+
+      - name: 构建 APK
+        run: |
+          chmod +x build.sh
+          ANDROID_SDK="$ANDROID_HOME" BUILD_TOOLS="$ANDROID_HOME/build-tools/34.0.0" ./build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Refresh165-apk
+          path: out/Refresh165.apk

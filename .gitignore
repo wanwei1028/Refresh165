@@ -1,2 +1,7 @@
+out/
+keystore.jks
+*.apk
 *.idsig
 .DS_Store
+.idea/
+*.iml

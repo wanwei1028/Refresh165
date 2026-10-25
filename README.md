@@ -97,6 +97,12 @@ libs/libxposed-api-102.jar       # io.github.libxposed:api:102.0.0
 build.sh                         # 一键构建
 ```
 
+## 签名说明
+
+Release 里的 APK 使用固定密钥签名，可直接覆盖升级。
+
+从源码自行构建时，`build.sh` 默认使用本地 `keystore.jks`（未提交，首次运行自动生成）。**自签包与 Release 包签名不同，无法互相覆盖**，需要先卸载其中一个。
+
 ## 更新记录
 
 见 [CHANGELOG.md](CHANGELOG.md)。

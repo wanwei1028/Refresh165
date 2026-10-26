@@ -7,11 +7,15 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   apk:
     runs-on: ubuntu-latest
+    outputs:
+      version_name: ${{ steps.ver.outputs.name }}
+      version_code: ${{ steps.ver.outputs.code }}
+      release_key: ${{ steps.signing.outputs.available }}
     steps:
       - uses: actions/checkout@v4
 
@@ -19,6 +23,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      - name: 回归测试
+        run: python3 tests/regression.py
+
+      - name: Xposed 适配层测试
+        run: python3 tests/xposed_adapter.py
+
+      - name: 视频前台判定测试
+        run: python3 tests/video_fixed.py
 
       - name: 读取版本号
         id: ver
@@ -45,6 +58,7 @@ jobs:
           yes | "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" > /dev/null
 
       - name: 准备签名密钥
+        id: signing
         if: github.event_name == 'push'
         env:
           KS_BASE64: ${{ secrets.KS_BASE64 }}
@@ -52,8 +66,10 @@ jobs:
           if [ -n "${KS_BASE64:-}" ]; then
             echo "$KS_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "KEYSTORE=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+            echo "available=true" >> "$GITHUB_OUTPUT"
             echo "使用仓库 Secrets 中的发布密钥"
           else
+            echo "available=false" >> "$GITHUB_OUTPUT"
             echo "未配置 KS_BASE64，将生成临时密钥（产物仅用于验证，不能覆盖正式版）"
           fi
 
@@ -73,10 +89,23 @@ jobs:
           name: Refresh165-v${{ steps.ver.outputs.name }}
           path: out/Refresh165-v*.apk
 
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') && needs.apk.outputs.release_key == 'true'
+    needs: apk
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: Refresh165-v${{ needs.apk.outputs.version_name }}
+          path: out
+
       - name: 生成更新日志
-        if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          v="v${{ steps.ver.outputs.name }}"
+          v="v${{ needs.apk.outputs.version_name }}"
           notes="$RUNNER_TEMP/notes.md"
           awk -v ver="## $v" '
             $0 == ver { flag=1; next }
@@ -93,14 +122,13 @@ jobs:
             echo ""
             echo "---"
             echo ""
-            echo "版本：$v（versionCode ${{ steps.ver.outputs.code }}）"
+            echo "版本：$v（versionCode ${{ needs.apk.outputs.version_code }}）"
             echo "作用域：android / system / com.android.settings"
             echo "构建：GitHub Actions 自动构建，使用与历史版本相同的签名密钥"
           } >> "$notes"
           echo "---- notes ----"; cat "$notes"
 
       - name: 发布 Release
-        if: startsWith(github.ref, 'refs/tags/v') && env.KEYSTORE != ''
         uses: softprops/action-gh-release@v2
         with:
           files: out/Refresh165-v*.apk

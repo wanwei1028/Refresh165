@@ -24,9 +24,9 @@ public abstract class XC_MethodHook {
         private Object extra;
 
         public Object getResult() { return result; }
-        public void setResult(Object r) { result = r; resultSet = true; }
+        public void setResult(Object r) { result = r; throwable = null; resultSet = true; }
         public Throwable getThrowable() { return throwable; }
-        public void setThrowable(Throwable t) { throwable = t; }
+        public void setThrowable(Throwable t) { throwable = t; result = null; resultSet = true; }
         public Object getExtra() { return extra; }
         public void setExtra(Object o) { extra = o; }
     }

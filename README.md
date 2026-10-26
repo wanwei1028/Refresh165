@@ -2,7 +2,7 @@
 
 ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed，基于 libxposed 新 API）。
 
-- 版本：见 `version.properties`（当前 v1.0.10）
+- 版本：见 `version.properties`（当前 v1.0.11）
 - 开发者：对味
 - 已验证设备：一加 15（PLK110），ColorOS 17 `PLK110_17.0.0.105(CN01)`
 - 兼容范围：依赖 ColorOS 私有接口和刷新率 ID 映射；其它机型或系统版本未经验证，不能保证可用
@@ -42,15 +42,15 @@ ColorOS 17 的 165Hz / LTPO / 低亮度 DC 修复模块（LSPosed，基于 libxp
 - 视频帧率策略目前仅对 system_server 的主用户生效
 - AOD 不改动
 - 模块不写 `persist.*` 属性，也不修改 `/my_product` 分区文件
-- v1.0.10 的本轮视频应用识别改动已通过本地回归测试；系统 UI 刷新率的游戏转场仍需针对目标游戏做手机实测
+- v1.0.11：白名单应用逐应用固定 165；游戏保留自身帧率（勾选则固定 165）；保留厂商 app-switch boost 并把目标改写为 165；去除 144 闪帧；90Hz 应用提升；锁定 165 使用保存/恢复面板表的方式实时生效且不污染 120/90/60 三张表
 
 ## 版本号管理
 
 版本号只有一个来源：`version.properties`
 
 ```
-versionName=1.0.10
-versionCode=110
+versionName=1.0.11
+versionCode=111
 ```
 
 构建时由 `build.sh` 注入到 `AndroidManifest.xml`，仓库里的 manifest 仅作模板，不需要手改。

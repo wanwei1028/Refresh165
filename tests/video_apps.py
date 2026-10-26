@@ -9,6 +9,9 @@ ROOT = Path(__file__).resolve().parents[1]
 JAVA_HOME = Path(os.environ.get(
     "JAVA_HOME", "/Applications/Android Studio.app/Contents/jbr/Contents/Home"))
 SOURCES = {
+    "android/content/ContentResolver.java": '''package android.content; public class ContentResolver {}''',
+    "android/provider/Settings.java": '''package android.provider; public class Settings { public static class Secure { public static String getString(android.content.ContentResolver c,String k){return null;} } }''',
+    "com/refresh165/Sys.java": '''package com.refresh165; final class Sys { static android.content.ContentResolver cr(){return new android.content.ContentResolver();} }''',
     "android/content/Intent.java": '''package android.content;
 public class Intent {
  public static final String ACTION_VIEW="android.intent.action.VIEW", CATEGORY_DEFAULT="android.intent.category.DEFAULT";
@@ -72,13 +75,13 @@ public class VideoAppsRegression {
   pm.activityNames.put("org.example.baidu","org.example.VideoLocalPlayActivity");
   StringBuilder proof=new StringBuilder();List<VideoApps.Entry> entries=VideoApps.videoCandidates(pm,proof);
   Set<String> pkgs=new HashSet<>();for(VideoApps.Entry e:entries)pkgs.add(e.pkg);
-  check(pkgs.equals(new HashSet<>(Arrays.asList("org.example.vlc","org.example.category","org.example.douyin","org.example.redfruit","org.example.bili"))),"candidates-are-derived-from-player-category-and-installed-labels");
-  check(entries.size()==5,"share-import-search-and-nonlaunchable-handlers-are-filtered");
+  check(pkgs.equals(new HashSet<>(Arrays.asList("org.example.vlc","org.example.category"))),"candidates-are-mime-player-and-category");
+  check(entries.size()==2,"share-import-search-and-nonlaunchable-handlers-are-filtered");
   boolean label=false;for(VideoApps.Entry e:entries)if(e.pkg.equals("org.example.vlc"))label="播放器 A".equals(e.label)&&"mime".equals(e.source);
   check(label,"system-label-and-resolve-source-retained");
   for(VideoApps.Entry e:entries)if(e.pkg.endsWith("douyin")||e.pkg.endsWith("redfruit")||e.pkg.endsWith("bili"))check("label".equals(e.source),"ugc-streaming-label-source-"+e.pkg.substring(e.pkg.lastIndexOf('.')+1));
   check(proof.toString().contains("mime=org.example.vlc")&&!proof.toString().contains("mime=org.example.qq"),"generic-video-handlers-are-not-video-apps");
-  check(proof.toString().contains("cat=org.example.category")&&proof.toString().contains("label=org.example.douyin,org.example.redfruit,org.example.bili"),"category-and-installed-label-proof");
+  check(proof.toString().contains("cat=org.example.category")&&!proof.toString().contains("label="),"category-proof-without-label-heuristic");
   System.out.println("PASS total="+passed);
  }
 }'''

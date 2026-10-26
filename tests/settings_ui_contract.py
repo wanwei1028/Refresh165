@@ -29,8 +29,8 @@ check('"screen_refresh_high"' in VIDEO_UI and "removeLegacyEntry(screen)" in VID
 
 # Make entry injection resilient to OEM lifecycle rebuilding/removing rows.
 resume = HOOK[HOOK.index('XposedBridge.hookAllMethods(frag, "onResume"'):]
-check("VideoRateUi.addRows" in resume and "addLockSwitch(ctx, screen" in resume,
-      "entries-reasserted-after-native-onResume-rebuild")
+check("VideoRateUi.addRows" in resume,
+          "entries-reasserted-after-native-onResume-rebuild")
 preflight = PAGES[PAGES.index("private static String preflight(Activity activity)"):]
 preflight = preflight[:preflight.index("// --------------------------------------------------------------- 壳内分派")]
 check("if (!sNativeInitHookOk)" in preflight

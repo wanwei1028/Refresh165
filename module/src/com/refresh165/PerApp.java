@@ -34,6 +34,8 @@ final class PerApp {
     /** 已废弃（I）：无写入点，保留键名仅供注释追溯。 */
     @Deprecated
     static final String KEY_APPS_NATIVE_ONLY_DEPRECATED = "refresh165_apps_native_only";
+    /** @deprecated 兼容旧调用/测试；不再读写。 */
+    @Deprecated static final String KEY_APPS_NATIVE_ONLY = KEY_APPS_NATIVE_ONLY_DEPRECATED;
 
     /** 已废弃的基线键：仅保留常量供文档/排障引用，代码不再读。 */
     /** 已废弃（I）：历史基线键，不再读取也不清理设备上的残留值。 */
@@ -433,6 +435,18 @@ final class PerApp {
             if (flag instanceof Number && ((Number) flag).intValue() != 0) return true;
         }
         return false;
+    }
+
+    /** 兼容旧调用：当前窗口是否为全屏游戏。 */
+    static boolean isGameFullscreen(String pkg) {
+        return isGame(pkg) && gameWindowingMode(pkg) == 1;
+    }
+
+    /** 兼容旧调用：最近记录的原生低帧请求是否仍在 3s 窗口内。 */
+    static boolean nativeRequestCap(String pkg) {
+        if (isEmpty(pkg) || !isGame(pkg) || checked(pkg)) return false;
+        return pkg.equals(sNativeReqPkg) && SystemClock.elapsedRealtime() - sNativeReqAt < 3000L
+                && sNativeReqId > 0 && sNativeReqId != RateMap.rateIdOf(165f);
     }
 
     static boolean blocks165Promotion(String pkg) {
